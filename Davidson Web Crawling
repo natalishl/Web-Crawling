@@ -1,0 +1,34 @@
+import requests
+from bs4 import BeautifulSoup
+import pandas as pd
+
+def get_page_content(url):
+    response = requests.get(url)
+    soup = BeautifulSoup(response.content, 'html.parser')
+    return soup
+
+def extract_data(soup):
+    page_title = soup.title.string if soup.title else 'No Title'
+    page_content = ' '.join([p.get_text() for p in soup.find_all('p')])
+    return page_title, page_content
+
+main_url = 'https://davidson.weizmann.ac.il/'
+
+data = []
+visited_links = set()
+
+main_page_soup = get_page_content(main_url)
+
+links = main_page_soup.find_all('a', href=True)
+unique_links = list(set(link['href'] for link in links if link['href'].startswith(main_url) and link['href'] not in visited_links))
+
+for link in unique_links:
+    if link not in visited_links:
+        visited_links.add(link)
+        soup = get_page_content(link)
+        page_title, page_content = extract_data(soup)
+        data.append({'שם דף': page_title, 'כתובת עמוד': link, 'תוכן עמוד': page_content})
+
+df = pd.DataFrame(data)
+df.to_excel('davidson_crawled_data.xlsx', index=False)
+print("Data extraction complete. File saved as 'davidson_crawled_data.xlsx'.")
